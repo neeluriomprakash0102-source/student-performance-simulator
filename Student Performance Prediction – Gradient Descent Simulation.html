@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Student Performance Prediction – Gradient Descent Simulation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f7fc;--card:#fff;--bd:#e2e7f5;--tx:#1e2761;--mu:#5b6484;--ac:#f5b700;--nv:#1e2761}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1230;--card:#161d4a;--bd:#2a3370;--tx:#eef1fb;--mu:#a9b2d6;--nv:#7d8dff}}
+:root[data-theme="dark"]{--bg:#0d1230;--card:#161d4a;--bd:#2a3370;--tx:#eef1fb;--mu:#a9b2d6;--nv:#7d8dff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 Calibri,Arial,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 40px}
+h1{font:700 28px Cambria,Georgia,serif;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}
+.s{color:var(--mu);margin:0 0 18px}.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+label{display:block;font-weight:700;font-size:14px}input[type=range]{width:100%}output{color:var(--nv);font-weight:700}
+button{background:var(--nv);color:#fff;border:0;border-radius:8px;padding:10px 20px;font:700 15px Calibri,Arial,sans-serif;cursor:pointer;margin:8px 8px 0 0}
+.big{font:700 28px Cambria,Georgia,serif;color:var(--nv)}.k{color:var(--mu);font-size:13px}
+table{border-collapse:collapse;width:100%}td{padding:6px 4px;border-bottom:1px solid var(--bd)}
+.bw{height:10px;background:var(--ac);border-radius:5px;min-width:2px}svg{width:100%;height:auto;display:block}
+</style></head><body><main>
+<h1>Student Performance Prediction</h1>
+<p class="s">Gradient descent linear-regression simulation on a synthetic student dataset (6 features → final exam score).</p>
+<div class="card"><div class="g">
+<div><label>Learning rate α: <output id="ao">0.1</output></label><input id="a" type="range" min="0.005" max="1.2" step="0.005" value="0.1"></div>
+<div><label>Iterations: <output id="io">200</output></label><input id="i" type="range" min="10" max="1000" step="10" value="200"></div>
+<div><label>Students (m): <output id="mo">400</output></label><input id="m" type="range" min="50" max="1000" step="50" value="400"></div>
+</div><button id="run">Train model</button><button id="re">New random dataset</button></div>
+<div class="g">
+<div class="card"><div class="k">Final cost J(w,b)</div><div class="big" id="jc">–</div></div>
+<div class="card"><div class="k">Test MSE</div><div class="big" id="ms">–</div></div>
+<div class="card"><div class="k">Test R²</div><div class="big" id="r2">–</div></div></div>
+<div class="card"><h2>Cost convergence</h2><svg id="cv" viewBox="0 0 640 240"></svg><div class="k" id="cn"></div></div>
+<div class="g"><div class="card"><h2>Learned weights (standardized)</h2><table id="wt"></table></div>
+<div class="card"><h2>Predict a student's score</h2><div id="pf"></div><div class="k">Predicted final score</div><div class="big" id="pr">–</div></div></div>
+<script>
+const F=[["Study hours / week",2,30,16],["Attendance %",50,100,75],["Sleep hours",4,9,6.5],["Previous score",35,95,65],["Parental support (0–2)",0,2,1],["Extracurricular (0/1)",0,1,1]];
+const $=id=>document.getElementById(id);let seed=42,model=null;
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(r){return Math.sqrt(-2*Math.log(r()||1e-9))*Math.cos(2*Math.PI*r())}
+function data(m){const r=rng(seed),W=[.9,.25,.8,.35,1.5,1],X=[],y=[];
+ for(let k=0;k<m;k++){const x=[2+28*r(),50+50*r(),4+5*r(),35+60*r(),Math.floor(3*r()),Math.floor(2*r())];
+  let v=5+gauss(r)*3;x.forEach((q,j)=>v+=W[j]*q);X.push(x);y.push(Math.min(100,Math.max(0,v)))}return{X,y}}
+function train(){const m=+$("m").value,al=+$("a").value,it=+$("i").value,d=data(m),k=Math.floor(m*.8),n=6;
+ const Xa=d.X.slice(0,k),ya=d.y.slice(0,k),Xb=d.X.slice(k),yb=d.y.slice(k);
+ const mu=[],sd=[];for(let j=0;j<n;j++){const c=Xa.map(r=>r[j]),u=c.reduce((s,v)=>s+v)/k;mu.push(u);sd.push(Math.sqrt(c.reduce((s,v)=>s+(v-u)**2,0)/k)||1)}
+ const N=r=>r.map((v,j)=>(v-mu[j])/sd[j]),Xn=Xa.map(N),Xt=Xb.map(N);
+ let w=Array(n).fill(0),b=0;const h=[];
+ for(let t=0;t<it;t++){const gw=Array(n).fill(0);let gb=0,c=0;
+  for(let q=0;q<k;q++){const e=Xn[q].reduce((s,v,j)=>s+v*w[j],b)-ya[q];c+=e*e;gb+=e;for(let j=0;j<n;j++)gw[j]+=e*Xn[q][j]}
+  h.push(c/(2*k));w=w.map((v,j)=>v-al*gw[j]/k);b-=al*gb/k}
+ const pr=Xt.map(r=>r.reduce((s,v,j)=>s+v*w[j],b)),ym=yb.reduce((s,v)=>s+v)/yb.length;
+ const mse=pr.reduce((s,p,q)=>s+(p-yb[q])**2,0)/pr.length,r2=1-pr.reduce((s,p,q)=>s+(p-yb[q])**2,0)/yb.reduce((s,v)=>s+(v-ym)**2,0);
+ model={w,b,mu,sd,h,mse,r2};show()}
+function show(){const M=model,f=M.h[M.h.length-1];
+ $("jc").textContent=isFinite(f)&&f<1e9?f.toFixed(2):"diverged";$("ms").textContent=isFinite(M.mse)&&M.mse<1e9?M.mse.toFixed(2):"–";$("r2").textContent=isFinite(M.r2)?M.r2.toFixed(3):"–";
+ const H=M.h.map(v=>isFinite(v)?Math.min(v,M.h[0]*3):M.h[0]*3),mx=Math.max(...H),L=H.length;
+ const pts=H.map((v,i)=>`${50+580*i/Math.max(1,L-1)},${210-190*v/mx}`).join(" ");
+ $("cv").innerHTML=`<rect x="50" y="20" width="580" height="190" fill="none" stroke="currentColor" opacity=".2"/><polyline points="${pts}" fill="none" stroke="#f5b700" stroke-width="3"/><text x="8" y="26" font-size="12" fill="currentColor">${mx.toFixed(0)}</text><text x="20" y="214" font-size="12" fill="currentColor">0</text><text x="50" y="232" font-size="12" fill="currentColor">iteration 0</text><text x="560" y="232" font-size="12" fill="currentColor">${L}</text>`;
+ $("cn").textContent=f>M.h[0]||!isFinite(f)?"Cost is rising: the learning rate is too high and the updates overshoot the minimum.":M.h[L-1]>M.h[Math.max(0,L-11)]*0.999?"Cost has flattened: converged.":"Cost is still falling: try more iterations or a larger α.";
+ const mw=Math.max(...M.w.map(Math.abs))||1;
+ $("wt").innerHTML=F.map((x,j)=>`<tr><td>${x[0]}</td><td style="width:45%"><div class="bw" style="width:${100*Math.abs(M.w[j])/mw}%"></div></td><td>${M.w[j].toFixed(2)}</td></tr>`).join("")+`<tr><td>Bias</td><td></td><td>${M.b.toFixed(2)}</td></tr>`;
+ predict()}
+function predict(){if(!model)return;const M=model,v=[...document.querySelectorAll("#pf input")].map(e=>+e.value);
+ $("pr").textContent=Math.min(100,Math.max(0,v.reduce((s,x,j)=>s+M.w[j]*(x-M.mu[j])/M.sd[j],M.b))).toFixed(1)}
+$("pf").innerHTML=F.map((x,j)=>`<label>${x[0]}: <output>${x[3]}</output></label><input type="range" min="${x[1]}" max="${x[2]}" step="${j>3?1:.5}" value="${x[3]}">`).join("");
+document.querySelectorAll("#pf input").forEach(e=>e.oninput=()=>{e.previousElementSibling.querySelector("output").value=e.value;predict()});
+[["a","ao"],["i","io"],["m","mo"]].forEach(([s,o])=>$(s).oninput=()=>{$(o).value=$(s).value});
+$("run").onclick=train;$("re").onclick=()=>{seed=Math.floor(Math.random()*1e6);train()};train();
+</script></main></body></html>
